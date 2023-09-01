@@ -20,4 +20,4 @@ obj.callibrate_acc() #calibrating accelerometer
 
 
 while True:
-  obj.return_angles() #will give alist containing pitch and roll angles (filtered with kalmanfilter)
+  print(obj.return_angles()) #will give alist containing pitch and roll angles (filtered with kalmanfilter)
