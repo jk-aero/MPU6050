@@ -1,6 +1,6 @@
 # MPU6050
 a library for MPU6050 in micropython
-# specially written from raspberrypi pico 
+# specially written for raspberrypi pico 
 but this will work in most microcontroller with micropython 
 
 
