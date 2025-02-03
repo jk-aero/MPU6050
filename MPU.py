@@ -6,7 +6,6 @@ class KalmanFilter:
     def __init__(self, KalmanState, KalmanUncertainty):
         self.KalmanState = KalmanState
         self.KalmanUncertainty = KalmanUncertainty
-        print('inside  kalman')
 
     def update(self, Gyro, Acc, dt):
         self.KalmanState = self.KalmanState + dt*Gyro
@@ -121,3 +120,16 @@ class MPU6050:
         dt = time.ticks_diff(now, start)/10**6
         self.start = now
         return self.pitchAngle.update(gY, Acc_Y, dt), self.rollAngle.update(gX, Acc_X, dt), dt
+
+
+if __name__=='__main__':
+    mpu = MPU6050(0,4,5)
+    print("Calibrating gyro...")
+    mpu.callibrate_gyro()
+    print("Calibrating accelerometer...")
+    mpu.callibrate_acc()
+
+    for x in range(100):
+        print("%6.2f %6.2f (%6.4f)" % mpu.return_angles())
+        # Add/change this to see variations in dt
+        # time.sleep(0.1)
