@@ -51,16 +51,12 @@ class MPU6050:
         self.i2c = I2C(busid, sda=Pin(SDA), scl=Pin(SCL))
         self.i2c.writeto_mem(self.mpu6050_addr, self.PWR_MGMT_1, b'\x01')
 
-    def _combine_register_values_(self, h, l):
-        if not h[0] & 0x80:
-            return h[0] << 8 | l[0]
-        return -((h[0] ^ 255) << 8) | (l[0] ^ 255) + 1
+    def _bytes_to_signed_16bit_(self, hi, lo):
+        return (((hi << 8) | lo) ^ 0x8000) - 0x8000
 
     def _read_raw_data_(self, addr):
-        high = self.i2c.readfrom_mem(self.mpu6050_addr, addr, 1)
-        low = self.i2c.readfrom_mem(self.mpu6050_addr, addr+1, 1)
-        val = self._combine_register_values_(high, low)
-        return (val)
+        bytes = self.i2c.readfrom_mem(self.mpu6050_addr, addr, 2)
+        return self._bytes_to_signed_16bit_(bytes[0], bytes[1])
 
     def read_acc(self):
         return (self._read_raw_data_(0x3B)/16384, self._read_raw_data_(0x3D)/16384, self._read_raw_data_(0x3F)/16384)
