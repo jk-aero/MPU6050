@@ -70,44 +70,45 @@ class MPU6050:
             time.sleep(t)
 
     def calculate_acc_angles(self):
-        x, y, z = [], [], []
-        for i in range(3):
+        x_sum, y_sum, z_sum = 0, 0, 0
+        num_samples = 3
+        for i in range(num_samples):
             acc_data = self.read_acc()
-            x.append(acc_data[0])
-            y.append(acc_data[1])
-            z.append(acc_data[2])
-        ax = sum(x)/3
-        ay = sum(y)/3
-        az = sum(z)/3
+            x_sum += acc_data[0]
+            y_sum += acc_data[1]
+            z_sum += acc_data[2]
+        ax = x_sum / num_samples
+        ay = y_sum / num_samples
+        az = z_sum / num_samples
         x_angles = degrees(atan(ay/((ax**2 + az**2)**0.5)))
         y_angles = degrees(atan(ax/((ay**2 + az**2)**0.5)))-5.18
         return (x_angles-self.x_acc_bias, y_angles-self.y_acc_bias)
 
     def callibrate_gyro(self):
-        GX_bias, GY_bias, GZ_bias = [], [], []
-        for i in range(100):
+        GX_sum, GY_sum, GZ_sum = 0, 0, 0
+        num_samples = 100
+        for i in range(num_samples):
             g_x, g_y, g_z = self.read_gyro()
-            GX_bias.append(g_x)
-            GY_bias.append(g_y)
-            GZ_bias.append(g_z)
-        self.z_gyro_bias = sum(GX_bias)/100
-        self.y_gyro_bias = sum(GY_bias)/100
-        self.z_gyro_bias = sum(GZ_bias)/100
-        del GX_bias, GY_bias, GZ_bias
+            GX_sum += g_x
+            GY_sum += g_y
+            GZ_sum += g_z
+        self.z_gyro_bias = GX_sum / num_samples
+        self.y_gyro_bias = GY_sum / num_samples
+        self.z_gyro_bias = GZ_sum / num_samples
         self.blink(0.1)
         time.sleep(2)
 
     def callibrate_acc(self):
-        lstX, lstY = [], []
-        for i in range(100):
+        x_sum, y_sum = 0, 0
+        num_samples = 100
+        for i in range(num_samples):
             a_x, a_y, a_z = self.read_acc()
             x_angle, y_angle = self.calculate_acc_angles()
-            lstX.append(x_angle)
-            lstY.append(y_angle)
+            x_sum += x_angle
+            y_sum += y_angle
 
-        self.x_acc_bias = (sum(lstX)/100)
-        self.y_acc_bias = (sum(lstY)/100)
-        del lstX, lstY
+        self.x_acc_bias = x_sum / num_samples
+        self.y_acc_bias = y_sum / num_samples
         self.blink(0.1)
         time.sleep(2)
 
