@@ -50,6 +50,7 @@ class MPU6050:
 
         self.i2c = I2C(busid, sda=Pin(SDA), scl=Pin(SCL))
         self.i2c.writeto_mem(self.mpu6050_addr, self.PWR_MGMT_1, b'\x01')
+        self.start = None
 
     def _bytes_to_signed_16bit_(self, hi, lo):
         return (((hi << 8) | lo) ^ 0x8000) - 0x8000
@@ -113,8 +114,10 @@ class MPU6050:
         time.sleep(2)
 
     def return_angles(self):
-        start = time.ticks_us()
+        start = self.start or time.ticks_us()
         gX, gY = self.read_gyro()[:-1]
         Acc_X, Acc_Y = self.calculate_acc_angles()
-        dt = time.ticks_diff(time.ticks_us(), start)/10**6
+        now = time.ticks_us()
+        dt = time.ticks_diff(now, start)/10**6
+        self.start = now
         return self.pitchAngle.update(gY, Acc_Y, dt), self.rollAngle.update(gX, Acc_X, dt), dt
