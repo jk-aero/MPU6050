@@ -3,18 +3,17 @@ import time
 from math import atan, degrees
 
 class KalmanFilter:
-    def __init__(self, KalmanState, KalmanUncertainity):
+    def __init__(self, KalmanState, KalmanUncertainty):
         self.KalmanState = KalmanState
-        self.KalmanUncertainity = KalmanUncertainity
+        self.KalmanUncertainty = KalmanUncertainty
         print('inside  kalman')
 
     def update(self, Gyro, Acc, dt):
         self.KalmanState = self.KalmanState + dt*Gyro
-        self.KalmanUncertainity = self.KalmanUncertainity + dt*dt*4*4
-        KalmanGain = self.KalmanUncertainity * 
-            (1/1*self.KalmanUncertainity + 3*3)
+        self.KalmanUncertainty = self.KalmanUncertainty + dt*dt*4*4
+        KalmanGain = self.KalmanUncertainty * (1/1*self.KalmanUncertainty + 3*3)
         self.KalmanState = self.KalmanState + KalmanGain*(Acc-self.KalmanState)
-        self.KalmanUncertainity = (1-KalmanGain)*self.KalmanUncertainity
+        self.KalmanUncertainty = (1-KalmanGain)*self.KalmanUncertainty
         return self.KalmanState
 
 '''================================================================================================================================================='''
@@ -32,7 +31,7 @@ class MPU6050:
         self.GYRO_ZOUT_H = 0x47
         self.mpu6050_addr = 0x68
 
-        self.z_gyro_bias = 0
+        self.x_gyro_bias = 0
         self.y_gyro_bias = 0
         self.z_gyro_bias = 0
 
@@ -40,14 +39,12 @@ class MPU6050:
         self.y_acc_bias = 0
 
         self.KalmanStateX = 0
-        self.KalmanUncertainityX = 0
-        self.pitchAngle = KalmanFilter(
-            self.KalmanStateX, self.KalmanUncertainityX)
+        self.KalmanUncertaintyX = 0
+        self.pitchAngle = KalmanFilter(self.KalmanStateX, self.KalmanUncertaintyX)
 
         self.KalmanStateY = 0
-        self.KalmanUncertainityY = 0
-        self.rollAngle = KalmanFilter(
-            self.KalmanStateY, self.KalmanUncertainityY)
+        self.KalmanUncertaintyY = 0
+        self.rollAngle = KalmanFilter(self.KalmanStateY, self.KalmanUncertaintyY)
 
         self.LED = Pin(led, Pin.OUT)
 
