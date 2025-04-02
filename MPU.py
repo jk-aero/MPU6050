@@ -3,18 +3,16 @@ import time
 from math import atan, degrees
 
 class KalmanFilter:
-    def __init__(self, KalmanState, KalmanUncertainity):
+    def __init__(self, KalmanState, KalmanUncertainty):
         self.KalmanState = KalmanState
-        self.KalmanUncertainity = KalmanUncertainity
-        print('inside  kalman')
+        self.KalmanUncertainty = KalmanUncertainty
 
     def update(self, Gyro, Acc, dt):
         self.KalmanState = self.KalmanState + dt*Gyro
-        self.KalmanUncertainity = self.KalmanUncertainity + dt*dt*4*4
-        KalmanGain = self.KalmanUncertainity * 
-            (1/1*self.KalmanUncertainity + 3*3)
+        self.KalmanUncertainty = self.KalmanUncertainty + dt*dt*4*4
+        KalmanGain = self.KalmanUncertainty * (1/1*self.KalmanUncertainty + 3*3)
         self.KalmanState = self.KalmanState + KalmanGain*(Acc-self.KalmanState)
-        self.KalmanUncertainity = (1-KalmanGain)*self.KalmanUncertainity
+        self.KalmanUncertainty = (1-KalmanGain)*self.KalmanUncertainty
         return self.KalmanState
 
 '''================================================================================================================================================='''
@@ -32,7 +30,7 @@ class MPU6050:
         self.GYRO_ZOUT_H = 0x47
         self.mpu6050_addr = 0x68
 
-        self.z_gyro_bias = 0
+        self.x_gyro_bias = 0
         self.y_gyro_bias = 0
         self.z_gyro_bias = 0
 
@@ -40,30 +38,25 @@ class MPU6050:
         self.y_acc_bias = 0
 
         self.KalmanStateX = 0
-        self.KalmanUncertainityX = 0
-        self.pitchAngle = KalmanFilter(
-            self.KalmanStateX, self.KalmanUncertainityX)
+        self.KalmanUncertaintyX = 0
+        self.pitchAngle = KalmanFilter(self.KalmanStateX, self.KalmanUncertaintyX)
 
         self.KalmanStateY = 0
-        self.KalmanUncertainityY = 0
-        self.rollAngle = KalmanFilter(
-            self.KalmanStateY, self.KalmanUncertainityY)
+        self.KalmanUncertaintyY = 0
+        self.rollAngle = KalmanFilter(self.KalmanStateY, self.KalmanUncertaintyY)
 
         self.LED = Pin(led, Pin.OUT)
 
         self.i2c = I2C(busid, sda=Pin(SDA), scl=Pin(SCL))
         self.i2c.writeto_mem(self.mpu6050_addr, self.PWR_MGMT_1, b'\x01')
+        self.start = None
 
-    def _combine_register_values_(self, h, l):
-        if not h[0] & 0x80:
-            return h[0] << 8 | l[0]
-        return -((h[0] ^ 255) << 8) | (l[0] ^ 255) + 1
+    def _bytes_to_signed_16bit_(self, hi, lo):
+        return (((hi << 8) | lo) ^ 0x8000) - 0x8000
 
     def _read_raw_data_(self, addr):
-        high = self.i2c.readfrom_mem(self.mpu6050_addr, addr, 1)
-        low = self.i2c.readfrom_mem(self.mpu6050_addr, addr+1, 1)
-        val = self._combine_register_values_(high, low)
-        return (val)
+        bytes = self.i2c.readfrom_mem(self.mpu6050_addr, addr, 2)
+        return self._bytes_to_signed_16bit_(bytes[0], bytes[1])
 
     def read_acc(self):
         return (self._read_raw_data_(0x3B)/16384, self._read_raw_data_(0x3D)/16384, self._read_raw_data_(0x3F)/16384)
@@ -77,50 +70,66 @@ class MPU6050:
             time.sleep(t)
 
     def calculate_acc_angles(self):
-        x, y, z = [], [], []
-        for i in range(3):
+        x_sum, y_sum, z_sum = 0, 0, 0
+        num_samples = 3
+        for i in range(num_samples):
             acc_data = self.read_acc()
-            x.append(acc_data[0])
-            y.append(acc_data[1])
-            z.append(acc_data[2])
-        ax = sum(x)/3
-        ay = sum(y)/3
-        az = sum(z)/3
+            x_sum += acc_data[0]
+            y_sum += acc_data[1]
+            z_sum += acc_data[2]
+        ax = x_sum / num_samples
+        ay = y_sum / num_samples
+        az = z_sum / num_samples
         x_angles = degrees(atan(ay/((ax**2 + az**2)**0.5)))
         y_angles = degrees(atan(ax/((ay**2 + az**2)**0.5)))-5.18
         return (x_angles-self.x_acc_bias, y_angles-self.y_acc_bias)
 
     def callibrate_gyro(self):
-        GX_bias, GY_bias, GZ_bias = [], [], []
-        for i in range(100):
+        GX_sum, GY_sum, GZ_sum = 0, 0, 0
+        num_samples = 100
+        for i in range(num_samples):
             g_x, g_y, g_z = self.read_gyro()
-            GX_bias.append(g_x)
-            GY_bias.append(g_y)
-            GZ_bias.append(g_z)
-        self.z_gyro_bias = sum(GX_bias)/100
-        self.y_gyro_bias = sum(GY_bias)/100
-        self.z_gyro_bias = sum(GZ_bias)/100
-        del GX_bias, GY_bias, GZ_bias
+            GX_sum += g_x
+            GY_sum += g_y
+            GZ_sum += g_z
+        self.z_gyro_bias = GX_sum / num_samples
+        self.y_gyro_bias = GY_sum / num_samples
+        self.z_gyro_bias = GZ_sum / num_samples
         self.blink(0.1)
         time.sleep(2)
 
     def callibrate_acc(self):
-        lstX, lstY = [], []
-        for i in range(100):
+        x_sum, y_sum = 0, 0
+        num_samples = 100
+        for i in range(num_samples):
             a_x, a_y, a_z = self.read_acc()
             x_angle, y_angle = self.calculate_acc_angles()
-            lstX.append(x_angle)
-            lstY.append(y_angle)
+            x_sum += x_angle
+            y_sum += y_angle
 
-        self.x_acc_bias = (sum(lstX)/100)
-        self.y_acc_bias = (sum(lstY)/100)
-        del lstX, lstY
+        self.x_acc_bias = x_sum / num_samples
+        self.y_acc_bias = y_sum / num_samples
         self.blink(0.1)
         time.sleep(2)
 
     def return_angles(self):
-        start = time.ticks_us()
+        start = self.start or time.ticks_us()
         gX, gY = self.read_gyro()[:-1]
         Acc_X, Acc_Y = self.calculate_acc_angles()
-        dt = time.ticks_diff(time.ticks_us(), start)/10**6
+        now = time.ticks_us()
+        dt = time.ticks_diff(now, start)/10**6
+        self.start = now
         return self.pitchAngle.update(gY, Acc_Y, dt), self.rollAngle.update(gX, Acc_X, dt), dt
+
+
+if __name__=='__main__':
+    mpu = MPU6050(0,4,5)
+    print("Calibrating gyro...")
+    mpu.callibrate_gyro()
+    print("Calibrating accelerometer...")
+    mpu.callibrate_acc()
+
+    for x in range(100):
+        print("%6.2f %6.2f (%6.4f)" % mpu.return_angles())
+        # Add/change this to see variations in dt
+        # time.sleep(0.1)
