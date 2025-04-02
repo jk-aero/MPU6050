@@ -1,4 +1,4 @@
-MPU6050 Sensor Interface with Raspberry Pi Pico
+#MPU6050 Sensor Interface with Raspberry Pi #Pico
 
 This project demonstrates how to interface an MPU6050 (accelerometer and gyroscope sensor) with a Raspberry Pi Pico using MicroPython. It provides real-time pitch and roll angles using a Kalman filter for improved accuracy.
 
